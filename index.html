@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050b18">
+  <meta name="description" content="JARVIS, tu asistente personal para Android.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/jarvis-192.png">
+  <title>JARVIS — Asistente personal</title>
+  <style>
+    :root{color-scheme:dark;--bg:#050b18;--panel:#0b1730;--cyan:#4bdcff;--blue:#3987ff;--muted:#91a8c8;--line:#173453}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(ellipse at 50% 20%,#10264b 0,#071326 42%,var(--bg) 78%);color:#eef7ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+    main{max-width:680px;margin:auto;padding:20px 17px calc(28px + env(safe-area-inset-bottom))}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{letter-spacing:.28em;font-size:13px;color:var(--cyan);font-weight:800}.status{font-size:11px;color:#9cc6df;border:1px solid var(--line);border-radius:99px;padding:7px 10px}
+    h1{text-align:center;font-size:clamp(28px,8vw,42px);letter-spacing:.16em;margin:34px 0 4px;text-shadow:0 0 24px #278dff}
+    .sub{text-align:center;color:var(--muted);font-size:11px;letter-spacing:.2em}
+    .orb-wrap{display:grid;place-items:center;padding:28px 0 20px}
+    .orb{width:min(56vw,230px);aspect-ratio:1;border-radius:50%;border:1px solid #4bdcff88;background:radial-gradient(circle,#173e65 0,#0a1c36 48%,#06101f 70%);box-shadow:0 0 22px #178cff88,inset 0 0 28px #35cfff44;display:grid;place-items:center;position:relative}
+    .orb:before,.orb:after{content:"";position:absolute;inset:-12px;border:1px solid #38caff66;border-radius:50%;animation:pulse 3s infinite}
+    .orb:after{inset:-24px;opacity:.45;animation-delay:1.5s}
+    .orb.listening{box-shadow:0 0 40px #32e6ff,inset 0 0 38px #32e6ff88}
+    .core{font-size:52px;color:#8ceaff;text-shadow:0 0 25px #4bdcff}
+    @keyframes pulse{0%{transform:scale(.92);opacity:.2}50%{opacity:.8}100%{transform:scale(1.08);opacity:0}}
+    .hint{text-align:center;color:var(--muted);font-size:13px;min-height:20px}
+    .panel{background:#0a1730d9;border:1px solid var(--line);border-radius:18px;padding:16px;margin:14px 0;box-shadow:0 10px 30px #0004}
+    label{display:block;color:#b9d5ec;font-size:12px;margin-bottom:8px}
+    .inputrow{display:flex;gap:8px}
+    input{min-width:0;flex:1;background:#061124;border:1px solid #234668;border-radius:12px;padding:13px;color:white;font-size:15px;outline:none}
+    button{border:1px solid #2879b5;background:linear-gradient(135deg,#123b68,#0b2443);color:#eafaff;border-radius:12px;padding:12px 14px;font-weight:700;font-size:13px}
+    button:focus,input:focus{outline:2px solid #4bdcff;outline-offset:2px}
+    button.primary{background:linear-gradient(135deg,#087cae,#245ee2);border-color:#4bdcff}
+    .actions{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+    .actions button{min-height:48px}
+    .log{font-size:13px;line-height:1.5;color:#d3e6f6;white-space:pre-wrap;min-height:50px}
+    .small{font-size:11px;color:#8da8c5;line-height:1.5}
+    .footer{text-align:center;color:#607d9e;font-size:10px;margin-top:22px}
+    .danger{color:#ffd28b}
+    @media(min-width:560px){main{padding-top:28px}.orb-wrap{padding:35px 0}}
+  </style>
+</head>
+<body>
+<main>
+  <header><div class="brand">J.A.R.V.I.S.</div><div class="status" id="status">SISTEMA LISTO</div></header>
+  <h1>JARVIS</h1><div class="sub">ASISTENTE PERSONAL · VERSIÓN 1.0</div>
+  <div class="orb-wrap"><div class="orb" id="orb" aria-label="Indicador de voz"><div class="core">◉</div></div></div>
+  <div class="hint" id="hint">Pulsa el micrófono y habla conmigo.</div>
+  <section class="panel">
+    <label for="command">ESCRIBE UNA INSTRUCCIÓN</label>
+    <div class="inputrow"><input id="command" autocomplete="off" placeholder="Ej. abre YouTube"><button class="primary" id="send">Enviar</button></div>
+    <div style="height:10px"></div>
+    <div class="actions">
+      <button class="primary" id="mic">🎙 Hablar</button>
+      <button id="stop">■ Detener voz</button>
+      <button id="calendar">▦ Calendario</button>
+      <button id="gmail">✉ Correo</button>
+      <button id="youtube">▶ YouTube</button>
+      <button id="help">? Comandos</button>
+    </div>
+  </section>
+  <section class="panel"><label>RESPUESTA DE JARVIS</label><div class="log" id="response" aria-live="polite">Buenos días. Soy JARVIS. Estoy listo para ayudarte. Puedes hablar o escribir una instrucción.</div></section>
+  <section class="panel">
+    <label>RECORDATORIO LOCAL</label>
+    <div class="inputrow"><input id="reminder" placeholder="Escribe un recordatorio"><button id="saveReminder">Guardar</button></div>
+    <div class="log" id="reminders" style="margin-top:10px">No hay recordatorios guardados.</div>
+    <p class="small">Los recordatorios se guardan únicamente en este navegador. Esta versión no envía alertas cuando está cerrada.</p>
+  </section>
+  <p class="small danger">Privacidad: esta versión no lee tus mensajes, contactos, archivos ni notificaciones. El reconocimiento de voz depende de la compatibilidad y los servicios de voz de tu navegador. No envíes contraseñas ni datos privados.</p>
+  <div class="footer">JARVIS · Proyecto personal para Android</div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const statusEl=$("status"), hint=$("hint"), response=$("response"), orb=$("orb");
+function say(text){
+  response.textContent=text;
+  if ("speechSynthesis" in window) {
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text); u.lang="es-MX"; u.rate=1; u.pitch=.92;
+    const voices=speechSynthesis.getVoices();
+    const es=voices.find(v=>v.lang && v.lang.toLowerCase().startsWith("es-mx")) || voices.find(v=>v.lang && v.lang.toLowerCase().startsWith("es"));
+    if(es) u.voice=es;
+    speechSynthesis.speak(u);
+  }
+}
+function openUrl(url){window.open(url,"_blank","noopener,noreferrer");}
+function runCommand(raw){
+  const q=raw.trim().toLowerCase();
+  if(!q) return;
+  $("command").value="";
+  if(q.includes("ayuda") || q.includes("comando")){
+    say("Puedes decir: abre YouTube, abre Google, abre WhatsApp, abre Gmail, abre calendario, qué hora es o guarda un recordatorio.");
+  } else if(q.includes("hora")){
+    say("Son las "+new Intl.DateTimeFormat("es-MX",{hour:"numeric",minute:"2-digit"}).format(new Date())+".");
+  } else if(q.includes("fecha") || q.includes("día")){
+    say("Hoy es "+new Intl.DateTimeFormat("es-MX",{dateStyle:"full"}).format(new Date())+".");
+  } else if(q.includes("youtube")){
+    say("Abriendo YouTube."); openUrl("https://m.youtube.com/");
+  } else if(q.includes("whatsapp")){
+    say("Abriendo WhatsApp Web. Para usar la aplicación instalada, Android puede ofrecerte abrirla."); openUrl("https://web.whatsapp.com/");
+  } else if(q.includes("gmail") || q.includes("correo")){
+    say("Abriendo Gmail."); openUrl("https://mail.google.com/");
+  } else if(q.includes("calendario") || q.includes("agenda")){
+    say("Abriendo Google Calendar."); openUrl("https://calendar.google.com/");
+  } else if(q.includes("google") || q.includes("busca")){
+    const term=q.replace(/^(jarvis[, ]*)?(busca|buscar|google)\s*/,"");
+    say(term ? "Buscando "+term+"." : "Abriendo Google.");
+    openUrl("https://www.google.com/search?q="+encodeURIComponent(term || "Google"));
+  } else if(q.includes("recordatorio")){
+    const item=raw.replace(/.*recordatorio(?: de| para)?/i,"").trim();
+    if(item){addReminder(item);say("He guardado el recordatorio: "+item+".");}
+    else say("Escribe el texto del recordatorio en el apartado de recordatorios.");
+  } else {
+    say("Todavía no tengo conectada una inteligencia artificial para responder preguntas abiertas. Puedo ejecutar los comandos disponibles. Di ayuda para verlos.");
+  }
+}
+$("send").addEventListener("click",()=>runCommand($("command").value));
+$("command").addEventListener("keydown",e=>{if(e.key==="Enter")runCommand($("command").value)});
+$("mic").addEventListener("click",()=>{
+  const SR=window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){say("Tu navegador no ofrece reconocimiento de voz. Usa el cuadro de texto o prueba Chrome actualizado.");return;}
+  const rec=new SR(); rec.lang="es-MX"; rec.interimResults=false; rec.maxAlternatives=1;
+  statusEl.textContent="ESCUCHANDO"; hint.textContent="Te escucho…"; orb.classList.add("listening");
+  rec.onresult=e=>{const t=e.results[0][0].transcript;hint.textContent="Has dicho: "+t;runCommand(t)};
+  rec.onerror=e=>{say("No pude reconocer la voz. Comprueba el permiso del micrófono e inténtalo de nuevo.");statusEl.textContent="SISTEMA LISTO";};
+  rec.onend=()=>{statusEl.textContent="SISTEMA LISTO";orb.classList.remove("listening");};
+  try{rec.start()}catch(e){say("No se pudo iniciar el micrófono. Inténtalo otra vez.");statusEl.textContent="SISTEMA LISTO";orb.classList.remove("listening")}
+});
+$("stop").addEventListener("click",()=>{if("speechSynthesis"in window)speechSynthesis.cancel();say("Voz detenida.")});
+$("calendar").addEventListener("click",()=>runCommand("abre calendario"));
+$("gmail").addEventListener("click",()=>runCommand("abre gmail"));
+$("youtube").addEventListener("click",()=>runCommand("abre youtube"));
+$("help").addEventListener("click",()=>runCommand("ayuda"));
+function loadReminders(){const a=JSON.parse(localStorage.getItem("jarvis_reminders")||"[]");$("reminders").textContent=a.length?a.map((x,i)=>(i+1)+". "+x).join("\n"):"No hay recordatorios guardados."}
+function addReminder(s){const a=JSON.parse(localStorage.getItem("jarvis_reminders")||"[]");a.push(s);localStorage.setItem("jarvis_reminders",JSON.stringify(a));loadReminders()}
+$("saveReminder").addEventListener("click",()=>{const v=$("reminder").value.trim();if(!v)return;addReminder(v);$("reminder").value="";say("Recordatorio guardado en este dispositivo.")});
+loadReminders();
+if("serviceWorker"in navigator && location.protocol!=="file:"){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
+if(!("speechSynthesis"in window)) $("hint").textContent="La voz de salida no está disponible en este navegador.";
+</script>
+</body>
+</html>
